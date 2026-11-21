@@ -16,7 +16,7 @@ Lead webhook ─┘                               │
 | Field | What the AI fills in |
 |---|---|
 | `category` | `hot` (clear need, budget or deadline), `warm` (real but vague), `cold` (just asking), `spam` |
-| `service` | Which service fits: support chatbot, email or document automation, video content repurposing, other |
+| `service` | Which of the business's services fits, in a few words (for example "support chatbot"), or `other` |
 | `urgency` | `high` only when the person names a deadline or asks to talk now |
 | `summary` | One sentence, facts from the message only |
 | `reason` | Why it got that category, so you can disagree quickly |
@@ -38,7 +38,8 @@ The replies are drafts. A person reads them before anything is sent; the workflo
 ## Guardrails
 
 - The prompt allows only facts from the lead: no invented prices, dates or past projects.
-- The output must match a JSON schema with fixed values for category, service and urgency.
+- The output must match a JSON schema with fixed values for category and urgency.
+- Replies never claim a time slot is free or booked, and never ask for details the lead already gave.
 - A code step checks the AI output again and falls back to `warm` if the category is anything unexpected.
 - The Gemini key is stored as an encrypted n8n credential. It is not in the workflow file or this repository.
 
@@ -63,7 +64,10 @@ The script creates the `leads` and `hot_leads` data tables, saves the Gemini cre
 workflow and publishes it. It prints the two addresses that are now live:
 
 - **Contact form:** http://localhost:5678/form/contact
-- **Webhook:** `POST http://localhost:5678/webhook/lead` with JSON `{ "name", "email", "company", "budget", "message" }`
+- **Webhook:** `POST http://localhost:5678/webhook/lead` with JSON `{ "name", "email", "company", "budget", "message" }`.
+  Optional: `source` (shown in the table, e.g. "website chat"), and `business` / `sign_off` when the sender
+  answers for a different business. The [website chat agent](https://github.com/mkaku2400-lang/website-ai-agent)
+  uses these to send leads for its clinic demo.
 
 Send the five sample leads to the webhook:
 
