@@ -1,0 +1,5 @@
+# Local n8n install, its database, encryption key and login: never commit
+runtime/
+node_modules/
+.env
+*.log

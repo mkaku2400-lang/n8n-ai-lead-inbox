@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Daniela Ruiz",
+    "email": "daniela@harborlinedental.example",
+    "company": "Harborline Dental (3 clinics)",
+    "budget": "$1,000 - $5,000",
+    "message": "Our front desk spends about two hours a day answering the same questions about insurance, opening hours and whitening prices. We'd like a chatbot on our website that answers from our own FAQ and books people into a callback list. We want it live before January. Can we talk this week?"
+  },
+  {
+    "name": "Tom Becker",
+    "email": "tom.becker@northfieldparts.example",
+    "company": "Northfield Parts",
+    "budget": "$500 - $1,000",
+    "message": "We get around 60 supplier invoices a week as PDF email attachments. Someone types the invoice number, date, supplier and total into a spreadsheet by hand. Is it possible to automate this? No rush, we're planning for Q1."
+  },
+  {
+    "name": "Priya",
+    "email": "priya.k@gmail.example",
+    "company": "",
+    "budget": "Not sure yet",
+    "message": "hi, just curious how much an AI chatbot costs in general? thinking about it for the future"
+  },
+  {
+    "name": "SEO Rank Pro",
+    "email": "offers@rank-boost-seo.example",
+    "company": "Rank Boost",
+    "budget": "Under $500",
+    "message": "Dear website owner, we can get your site to page 1 of Google in 30 days guaranteed!!! 500 backlinks for only $49. Reply now for a free audit."
+  },
+  {
+    "name": "Marcus Lee",
+    "email": "marcus@leeandpartnerspodcast.example",
+    "company": "Lee & Partners Podcast",
+    "budget": "$500 - $1,000",
+    "message": "We publish two interview episodes a week on YouTube. Writing titles, descriptions, chapters and clips for social takes my editor a full day. I'd like a monthly package for 8 episodes, starting next month."
+  }
+]
