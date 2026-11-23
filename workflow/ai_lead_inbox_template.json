@@ -1,0 +1,390 @@
+{
+  "name": "AI Lead Inbox: qualify new leads and draft the reply",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI Lead Inbox: sort new leads and draft the reply\n\nEvery new lead from the contact form or the webhook is read by an AI model, which fills in:\n- **category**: hot, warm, cold or spam\n- **service** it fits, **urgency**, a one-line **summary** and the **reason** for the rating\n- a **reply draft** that mentions a detail from their message (empty for spam)\n\nEverything goes to the `leads` data table. Hot leads are also copied to `hot_leads`, so nobody misses them.\n\nReplies are drafts. Nothing is emailed to the lead automatically.",
+        "width": 380,
+        "height": 460,
+        "color": 7
+      },
+      "id": "0f1c6a52-0101-4c1e-9a10-a1b2c3d40101",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Setup (about 5 minutes)\n\n1. **Data tables**: create two tables, `leads` and `hot_leads`, each with these text columns: received_at, source, name, email, company, budget, message, category, service, urgency, summary, reason, reply_draft, next_step. Select them in the two table nodes.\n2. **AI model**: add a Google Gemini credential (free key at aistudio.google.com) to the **Gemini** node, or swap it for an OpenAI or Anthropic chat model node.\n3. **Your business**: edit the first two lines of **Clean up the lead** (what you sell, and the name replies are signed with).\n4. Publish, then open the form URL from **Website form**, or POST JSON to the webhook: `{ \"name\", \"email\", \"company\", \"budget\", \"message\" }`.",
+        "width": 380,
+        "height": 470,
+        "color": 5
+      },
+      "id": "0f1c6a52-0102-4c1e-9a10-a1b2c3d40102",
+      "name": "Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        170
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Guardrails\nThe AI may use only facts from the lead, must return JSON that matches the schema, and never claims a time slot is free. **Build the lead record** checks the output again and falls back to `warm` if the category is unexpected.",
+        "width": 300,
+        "height": 200,
+        "color": 6
+      },
+      "id": "0f1c6a52-0103-4c1e-9a10-a1b2c3d40103",
+      "name": "Guardrails",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "formTitle": "Tell us about your project",
+        "formDescription": "We reply within one business day.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company"
+            },
+            {
+              "fieldLabel": "Budget",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Under $500"
+                  },
+                  {
+                    "option": "$500 - $1,000"
+                  },
+                  {
+                    "option": "$1,000 - $5,000"
+                  },
+                  {
+                    "option": "More than $5,000"
+                  },
+                  {
+                    "option": "Not sure yet"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Message",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "path": "contact",
+          "formSubmittedText": "Thanks, we have your message and will reply within one business day."
+        }
+      },
+      "id": "0f1c6a52-0001-4c1e-9a10-a1b2c3d40001",
+      "name": "Website form",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5d6f4a1e-7c2b-4b8e-9f10-contactform01"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead",
+        "options": {}
+      },
+      "id": "0f1c6a52-0002-4c1e-9a10-a1b2c3d40002",
+      "name": "Lead webhook (other sites, CRM, Zapier)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        220
+      ],
+      "webhookId": "8a3e2c71-1d4f-4f6a-b2c9-leadwebhook01"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Both triggers end up here. The form sends its fields by label,\n// the webhook sends a JSON body. Turn either into one clean lead.\n\n// The business the replies are written for. Change these two lines for a client.\nconst BUSINESS = 'Acme Studio, a small web design agency (websites, online shops, SEO)';\nconst SIGN_OFF = 'Alex';\n\nreturn $input.all().map((item) => {\n  const fromWebhook = item.json.body !== undefined;\n  const src = fromWebhook ? item.json.body : item.json;\n  const pick = (...keys) => {\n    for (const key of keys) {\n      const value = src[key];\n      if (value !== undefined && value !== null && String(value).trim() !== '') {\n        return String(value).trim();\n      }\n    }\n    return '';\n  };\n\n  return {\n    json: {\n      name: pick('Name', 'name'),\n      email: pick('Email', 'email').toLowerCase(),\n      company: pick('Company', 'company'),\n      budget: pick('Budget', 'budget') || 'Not given',\n      message: pick('Message', 'message').slice(0, 4000),\n      // A sender such as the website chat agent can name its channel and the business it answers for.\n      source: fromWebhook ? (pick('source').slice(0, 40) || 'webhook') : 'website form',\n      received_at: new Date().toISOString(),\n      business: (fromWebhook && pick('business').slice(0, 200)) || BUSINESS,\n      sign_off: (fromWebhook && pick('sign_off').slice(0, 80)) || SIGN_OFF,\n    },\n  };\n});"
+      },
+      "id": "0f1c6a52-0003-4c1e-9a10-a1b2c3d40003",
+      "name": "Clean up the lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        110
+      ]
+    },
+    {
+      "parameters": {
+        "text": "=Name: {{ $json.name }}\nCompany: {{ $json.company || 'not given' }}\nBudget: {{ $json.budget }}\nMessage:\n{{ $json.message }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"category\": {\n      \"type\": \"string\",\n      \"enum\": [\"hot\", \"warm\", \"cold\", \"spam\"],\n      \"description\": \"hot = clear need we offer, a budget or timeline, wants to talk soon. warm = real need but vague or no rush. cold = just curious or price shopping. spam = selling something to us, mass mailing, or unrelated.\"\n    },\n    \"service\": {\n      \"type\": \"string\",\n      \"description\": \"Which of the business's services fits the request best, in 2 to 4 lowercase words (for example 'support chatbot' or 'teeth whitening'). 'other' if none fits.\"\n    },\n    \"urgency\": {\n      \"type\": \"string\",\n      \"enum\": [\"high\", \"normal\", \"low\"],\n      \"description\": \"high only if they mention a deadline, 'this week', or asks to talk now.\"\n    },\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"One sentence, at most 25 words: who they are and what they want. Facts from the message only.\"\n    },\n    \"reason\": {\n      \"type\": \"string\",\n      \"description\": \"At most 20 words: the facts from the message that decided the category.\"\n    },\n    \"reply_draft\": {\n      \"type\": \"string\",\n      \"description\": \"Email reply for a person to review before sending. Required for hot, warm and cold leads. Empty string only for spam.\"\n    }\n  },\n  \"required\": [\"category\", \"service\", \"urgency\", \"summary\", \"reason\", \"reply_draft\"]\n}",
+        "options": {
+          "systemPromptTemplate": "=You sort incoming sales leads for this business: {{ $json.business }}.\n\nRead the lead and fill every field. Use only facts that are in the lead. Never invent prices, dates, numbers or past projects.\n\nRules for reply_draft:\n- Always write one for hot, warm and cold leads. Only spam gets an empty string.\n- Plain email text, 50 to 110 words, no subject line.\n- Start with \"Hi {first name},\" and go straight to their situation. No \"I hope this email finds you well\", no \"Thank you for reaching out\".\n- Mention one specific detail from their message so it is clear a person read it.\n- Never ask for something they already gave (phone, preferred time, budget, company).\n- hot: propose the next step that fits the request (for a project, a 15-minute call this week; for an appointment, say a person will confirm a time that matches their preference) and ask one question that helps prepare for it. Never say a time slot is free or booked: you cannot see any calendar.\n- warm: ask the one or two questions needed to scope the work.\n- cold: answer briefly and honestly, say that price depends on scope, and invite them to share details when ready.\n- spam: empty string.\n- Questions end with a question mark. Write numbers as digits (15-minute, not fifteen-minute).\n- No exclamation marks, no emojis, no buzzwords such as \"leverage\", \"seamless\" or \"cutting-edge\".\n- End with \"{{ $json.sign_off }}\" on its own line."
+        }
+      },
+      "id": "0f1c6a52-0004-4c1e-9a10-a1b2c3d40004",
+      "name": "Qualify the lead (AI)",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        500,
+        110
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "0f1c6a52-0005-4c1e-9a10-a1b2c3d40005",
+      "name": "Gemini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        500,
+        330
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Join the original lead with what the AI decided, and guard against odd output.\nconst NEXT_STEP = {\n  hot: 'Call or reply today',\n  warm: 'Reply today with questions',\n  cold: 'Send short info reply',\n  spam: 'Ignore',\n};\n\nreturn $input.all().map((item, index) => {\n  const lead = $('Clean up the lead').itemMatching(index).json;\n  const ai = item.json.output || {};\n  const category = NEXT_STEP[ai.category] ? ai.category : 'warm';\n  const reply = category === 'spam' ? '' : String(ai.reply_draft || '').trim();\n  // The model sometimes skips the reply. Say so instead of leaving a silent blank.\n  const nextStep = category !== 'spam' && !reply\n    ? NEXT_STEP[category] + ' (no AI draft, write the reply by hand)'\n    : NEXT_STEP[category];\n\n  return {\n    json: {\n      received_at: lead.received_at,\n      source: lead.source,\n      name: lead.name,\n      email: lead.email,\n      company: lead.company,\n      budget: lead.budget,\n      message: lead.message,\n      category,\n      service: ai.service || 'other',\n      urgency: ai.urgency || 'normal',\n      summary: ai.summary || '',\n      reason: ai.reason || '',\n      reply_draft: reply,\n      next_step: nextStep,\n    },\n  };\n});"
+      },
+      "id": "0f1c6a52-0006-4c1e-9a10-a1b2c3d40006",
+      "name": "Build the lead record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        110
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {}
+      },
+      "id": "0f1c6a52-0007-4c1e-9a10-a1b2c3d40007",
+      "name": "Save to Leads table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        110
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b7e1f0c2-hot-0001",
+              "leftValue": "={{ $('Build the lead record').item.json.category }}",
+              "rightValue": "hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0f1c6a52-0008-4c1e-9a10-a1b2c3d40008",
+      "name": "Hot lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        110
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pass the full record on, not the row id the table returned.\nreturn $input.all().map((item, index) => ({\n  json: $('Build the lead record').itemMatching(index).json,\n}));"
+      },
+      "id": "0f1c6a52-0009-4c1e-9a10-a1b2c3d40009",
+      "name": "Take the lead record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "",
+          "cachedResultName": "hot_leads"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {}
+      },
+      "id": "0f1c6a52-0010-4c1e-9a10-a1b2c3d40010",
+      "name": "Add to Hot leads table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1720,
+        20
+      ]
+    }
+  ],
+  "connections": {
+    "Website form": {
+      "main": [
+        [
+          {
+            "node": "Clean up the lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead webhook (other sites, CRM, Zapier)": {
+      "main": [
+        [
+          {
+            "node": "Clean up the lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean up the lead": {
+      "main": [
+        [
+          {
+            "node": "Qualify the lead (AI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Qualify the lead (AI)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qualify the lead (AI)": {
+      "main": [
+        [
+          {
+            "node": "Build the lead record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build the lead record": {
+      "main": [
+        [
+          {
+            "node": "Save to Leads table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Leads table": {
+      "main": [
+        [
+          {
+            "node": "Hot lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot lead?": {
+      "main": [
+        [
+          {
+            "node": "Take the lead record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Take the lead record": {
+      "main": [
+        [
+          {
+            "node": "Add to Hot leads table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
