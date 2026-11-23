@@ -35,18 +35,18 @@
     },
     {
       "parameters": {
-        "content": "### Guardrails\nThe AI may use only facts from the lead, must return JSON that matches the schema, and never claims a time slot is free. **Build the lead record** checks the output again and falls back to `warm` if the category is unexpected.",
-        "width": 300,
-        "height": 200,
+        "content": "### Guardrails and limits\nThe AI may use only facts from the lead, must return JSON that matches the schema, and never claims a time slot is free. **Build the lead record** checks the output again and falls back to `warm` if the category is unexpected.\n\n**Limits:** webhook leads without an email are still saved, so add a check if your sender can omit it. The rating is a suggestion: read the reason before acting on it. Tested on n8n 2.48 (self-hosted) with Gemini 3.5 Flash-Lite; data tables need an n8n version that has them.",
+        "width": 340,
+        "height": 260,
         "color": 6
       },
       "id": "0f1c6a52-0103-4c1e-9a10-a1b2c3d40103",
-      "name": "Guardrails",
+      "name": "Guardrails and limits",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         460,
-        -200
+        -260
       ]
     },
     {

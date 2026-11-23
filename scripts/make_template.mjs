@@ -58,10 +58,12 @@ workflow.nodes.unshift(
     '3. **Your business**: edit the first two lines of **Clean up the lead** (what you sell, and the name replies are signed with).',
     '4. Publish, then open the form URL from **Website form**, or POST JSON to the webhook: `{ "name", "email", "company", "budget", "message" }`.',
   ].join('\n'), [-420, 170], 380, 470, 5),
-  sticky('0f1c6a52-0103-4c1e-9a10-a1b2c3d40103', 'Guardrails', [
-    '### Guardrails',
+  sticky('0f1c6a52-0103-4c1e-9a10-a1b2c3d40103', 'Guardrails and limits', [
+    '### Guardrails and limits',
     'The AI may use only facts from the lead, must return JSON that matches the schema, and never claims a time slot is free. **Build the lead record** checks the output again and falls back to `warm` if the category is unexpected.',
-  ].join('\n'), [460, -200], 300, 200, 6),
+    '',
+    '**Limits:** webhook leads without an email are still saved, so add a check if your sender can omit it. The rating is a suggestion: read the reason before acting on it. Tested on n8n 2.48 (self-hosted) with Gemini 3.5 Flash-Lite; data tables need an n8n version that has them.',
+  ].join('\n'), [460, -260], 340, 260, 6),
 );
 
 await writeFile(TARGET, JSON.stringify(workflow, null, 2) + '\n');
